@@ -1,180 +1,690 @@
 // ─── ABI ─────────────────────────────────────────────────────────────────────
 
-export const VEILDAO_ABI = [
-  // Write
-  {
-    name: "createProposal",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "title",            type: "string"  },
-      { name: "description",      type: "string"  },
-      { name: "category",         type: "string"  },
-      { name: "durationSeconds",  type: "uint256" },
-    ],
-    outputs: [{ name: "id", type: "uint256" }],
-  },
-  {
-    name: "castVote",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "proposalId", type: "uint256" },
-      { name: "encFor",     type: "tuple", components: [{ name: "data", type: "bytes" }] },
-      { name: "encAgainst", type: "tuple", components: [{ name: "data", type: "bytes" }] },
-      { name: "encAbstain", type: "tuple", components: [{ name: "data", type: "bytes" }] },
-    ],
-    outputs: [],
-  },
-  {
-    name: "resolveProposal",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "proposalId", type: "uint256" }],
-    outputs: [],
-  },
-  {
-    name: "publishResults",
-    type: "function",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "proposalId",   type: "uint256" },
-      { name: "forPlain",     type: "uint32"  },
-      { name: "forSig",       type: "bytes"   },
-      { name: "againstPlain", type: "uint32"  },
-      { name: "againstSig",   type: "bytes"   },
-      { name: "abstainPlain", type: "uint32"  },
-      { name: "abstainSig",   type: "bytes"   },
-    ],
-    outputs: [],
-  },
-  // Read
-  {
-    name: "proposalCount",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-  {
-    name: "hasVoted",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "proposalId", type: "uint256" },
-      { name: "voter",      type: "address" },
-    ],
-    outputs: [{ name: "", type: "bool" }],
-  },
-  {
-    name: "voterCount",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "proposalId", type: "uint256" }],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-  {
-    name: "getProposal",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "id", type: "uint256" }],
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        components: [
-          { name: "id",               type: "uint256" },
-          { name: "title",            type: "string"  },
-          { name: "description",      type: "string"  },
-          { name: "category",         type: "string"  },
-          { name: "proposer",         type: "address" },
-          { name: "startTime",        type: "uint256" },
-          { name: "endTime",          type: "uint256" },
-          { name: "voterCount",       type: "uint256" },
-          { name: "resolved",         type: "bool"    },
-          { name: "resultsPublished", type: "bool"    },
-          { name: "forVotes",         type: "uint256" },
-          { name: "againstVotes",     type: "uint256" },
-          { name: "abstainVotes",     type: "uint256" },
-          { name: "resultsReady",     type: "bool"    },
-        ],
-      },
-    ],
-  },
-  {
-    name: "getProposals",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "offset", type: "uint256" },
-      { name: "limit",  type: "uint256" },
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "tuple[]",
-        components: [
-          { name: "id",               type: "uint256" },
-          { name: "title",            type: "string"  },
-          { name: "description",      type: "string"  },
-          { name: "category",         type: "string"  },
-          { name: "proposer",         type: "address" },
-          { name: "startTime",        type: "uint256" },
-          { name: "endTime",          type: "uint256" },
-          { name: "voterCount",       type: "uint256" },
-          { name: "resolved",         type: "bool"    },
-          { name: "resultsPublished", type: "bool"    },
-          { name: "forVotes",         type: "uint256" },
-          { name: "againstVotes",     type: "uint256" },
-          { name: "abstainVotes",     type: "uint256" },
-          { name: "resultsReady",     type: "bool"    },
-        ],
-      },
-    ],
-  },
-  // Events
-  {
-    name: "ProposalCreated",
-    type: "event",
-    inputs: [
-      { name: "id",       type: "uint256", indexed: true  },
-      { name: "proposer", type: "address", indexed: true  },
-      { name: "title",    type: "string",  indexed: false },
-      { name: "category", type: "string",  indexed: false },
-      { name: "endTime",  type: "uint256", indexed: false },
-    ],
-  },
-  {
-    name: "VoteCast",
-    type: "event",
-    inputs: [
-      { name: "proposalId", type: "uint256", indexed: true },
-      { name: "voter",      type: "address", indexed: true },
-    ],
-  },
-  {
-    name: "ProposalResolved",
-    type: "event",
-    inputs: [{ name: "proposalId", type: "uint256", indexed: true }],
-  },
-  {
-    name: "ResultsPublished",
-    type: "event",
-    inputs: [
-      { name: "proposalId",   type: "uint256", indexed: true  },
-      { name: "forVotes",     type: "uint32",  indexed: false },
-      { name: "againstVotes", type: "uint32",  indexed: false },
-      { name: "abstainVotes", type: "uint32",  indexed: false },
-    ],
-  },
-] as const;
+export const VEILDAO_ABI =  [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "got",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "expected",
+          "type": "uint8"
+        }
+      ],
+      "name": "InvalidEncryptedInput",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "int32",
+          "name": "value",
+          "type": "int32"
+        }
+      ],
+      "name": "SecurityZoneOutOfBounds",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "category",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "endTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "ProposalCreated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "ProposalResolved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "forVotes",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "againstVotes",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "abstainVotes",
+          "type": "uint32"
+        }
+      ],
+      "name": "ResultsPublished",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "voter",
+          "type": "address"
+        }
+      ],
+      "name": "VoteCast",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encFor",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encAgainst",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encAbstain",
+          "type": "tuple"
+        }
+      ],
+      "name": "castVote",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "category",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "durationSeconds",
+          "type": "uint256"
+        }
+      ],
+      "name": "createProposal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getProposal",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "description",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "category",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "proposer",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "startTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "endTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "voterCount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resolved",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsPublished",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint256",
+              "name": "forVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "againstVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "abstainVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsReady",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct VeilDAO.ProposalView",
+          "name": "v",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "offset",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limit",
+          "type": "uint256"
+        }
+      ],
+      "name": "getProposals",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "description",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "category",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "proposer",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "startTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "endTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "voterCount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resolved",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsPublished",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint256",
+              "name": "forVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "againstVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "abstainVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsReady",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct VeilDAO.ProposalView[]",
+          "name": "result",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "hasVoted",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "maxVotingDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "minVotingDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "proposalCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint32",
+          "name": "forPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "forSig",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint32",
+          "name": "againstPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "againstSig",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint32",
+          "name": "abstainPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "abstainSig",
+          "type": "bytes"
+        }
+      ],
+      "name": "publishResults",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "resolveProposal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "min_",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "max_",
+          "type": "uint256"
+        }
+      ],
+      "name": "setVotingDurationBounds",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "voterCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ] as const;
 
 // ─── Addresses ────────────────────────────────────────────────────────────────
 
 export const CONTRACT_ADDRESSES: Record<number, `0x${string}`> = {
-  // Fhenix Helium Testnet (deployed after running: pnpm task:deploy-veildao --network eth-sepolia)
-  11155111: "0x0000000000000000000000000000000000000000", // eth-sepolia — replace after deploy
-  421614:   "0x0000000000000000000000000000000000000000", // arb-sepolia — replace after deploy
+  11155111: "0x0000000000000000000000000000000000000000", // eth-sepolia
+  421614:   "0xdE21971e44DB426b87B17C40eaC54E212bdCa7EB", // arb-sepolia
 };
 
 export function getVeilDAOAddress(chainId: number): `0x${string}` | undefined {
