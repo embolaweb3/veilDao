@@ -119,6 +119,14 @@ function publishResults(uint256 id, uint32 forPlain, bytes forSig, ...) external
 
 ---
 
+## Live Deployment
+
+| Network | Contract Address |
+|---------|-----------------|
+| Arbitrum Sepolia | [`0xdE21971e44DB426b87B17C40eaC54E212bdCa7EB`](https://sepolia.arbiscan.io/address/0xdE21971e44DB426b87B17C40eaC54E212bdCa7EB) |
+
+---
+
 ## Setup
 
 ### Prerequisites
