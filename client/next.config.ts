@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Turbopack (next dev --turbo) handles WASM natively.
-  // Node built-in polyfills (fs, net, tls) are excluded automatically for browser targets.
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@react-native-async-storage/async-storage": false,
+      "pino-pretty": false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
