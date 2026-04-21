@@ -1,14 +1,6 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 import "./globals.css";
-
-// WalletConnect/RainbowKit access browser-only APIs (indexedDB, localStorage) at
-// module initialisation time. Rendering them on the server crashes SSR.
-// ssr: false ensures this entire tree is client-only.
-const Providers = dynamic(
-  () => import("@/components/Providers").then((m) => m.Providers),
-  { ssr: false }
-);
+import { ClientProviders } from "@/components/ClientProviders";
 
 export const metadata: Metadata = {
   title:       "VeilDAO — Coercion-Resistant Governance",
@@ -35,11 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="bg-orb bg-orb-3" aria-hidden />
         <div className="grid-overlay"    aria-hidden />
 
-        <Providers>
+        <ClientProviders>
           <div className="relative z-10 min-h-screen">
             {children}
           </div>
-        </Providers>
+        </ClientProviders>
       </body>
     </html>
   );
