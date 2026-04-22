@@ -81,7 +81,11 @@ export function useHasVoted(proposalId: bigint) {
 export function useCreateProposal() {
   const address = useContractAddress();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isPending: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isPending: waitPending, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+    query: { enabled: !!hash },
+  });
+  const isConfirming = !!hash && waitPending;
 
   const createProposal = (
     title:           string,
@@ -104,7 +108,11 @@ export function useCreateProposal() {
 export function useResolveProposal(proposalId: bigint) {
   const address = useContractAddress();
   const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isPending: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isPending: waitPending, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+    query: { enabled: !!hash },
+  });
+  const isConfirming = !!hash && waitPending;
 
   const resolve = () => {
     if (!address) return;
