@@ -20,7 +20,10 @@ export function useFHEVote(proposalId: bigint) {
   const [errMsg, setErrMsg] = useState<string>("");
 
   const { writeContractAsync, data: hash } = useWriteContract();
-  const { isPending: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isPending: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+    query: { enabled: !!hash },
+  });
 
   const castVote = useCallback(
     async (choice: VoteChoice, cofheClient: any) => {
@@ -31,12 +34,8 @@ export function useFHEVote(proposalId: bigint) {
       }
 
       try {
-        // ── 1. Encrypt ──────────────────────────────────────────────────────
         setStage("encrypting");
 
-        // Each vote is a triple: exactly one field is 1, the rest are 0.
-        // The FHE ciphertexts are randomised — an observer can NOT determine
-        // which was 1, making coercion cryptographically impossible.
         const forVal     = choice === "for"     ? 1n : 0n;
         const againstVal = choice === "against" ? 1n : 0n;
         const abstainVal = choice === "abstain" ? 1n : 0n;
@@ -49,7 +48,6 @@ export function useFHEVote(proposalId: bigint) {
           ])
           .execute();
 
-        // ── 2. Send transaction ──────────────────────────────────────────────
         setStage("sending");
 
         await writeContractAsync({
@@ -59,7 +57,6 @@ export function useFHEVote(proposalId: bigint) {
           args:         [proposalId, encrypted[0], encrypted[1], encrypted[2]],
         });
 
-        // ── 3. Wait for confirmation ─────────────────────────────────────────
         setStage("confirming");
       } catch (err: any) {
         setErrMsg(err?.message ?? "Transaction failed");
