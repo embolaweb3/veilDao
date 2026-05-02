@@ -28,188 +28,958 @@ const PROPOSAL_VIEW_COMPONENTS = [
   { internalType: "bool",    name: "analyticsReady",     type: "bool"     },
 ] as const;
 
-export const VEILDAO_ABI = [
-  // ── Errors ──────────────────────────────────────────────────────────────
-  { inputs: [{ internalType: "uint8", name: "got", type: "uint8" }, { internalType: "uint8", name: "expected", type: "uint8" }], name: "InvalidEncryptedInput", type: "error" },
-  { inputs: [{ internalType: "address", name: "owner", type: "address" }], name: "OwnableInvalidOwner", type: "error" },
-  { inputs: [{ internalType: "address", name: "account", type: "address" }], name: "OwnableUnauthorizedAccount", type: "error" },
-  { inputs: [{ internalType: "int32", name: "value", type: "int32" }], name: "SecurityZoneOutOfBounds", type: "error" },
-
-  // ── Events ───────────────────────────────────────────────────────────────
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true,  internalType: "address", name: "previousOwner", type: "address" },
-      { indexed: true,  internalType: "address", name: "newOwner",       type: "address" },
-    ],
-    name: "OwnershipTransferred", type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true,  internalType: "uint256", name: "id",        type: "uint256" },
-      { indexed: true,  internalType: "address", name: "proposer",  type: "address" },
-      { indexed: false, internalType: "string",  name: "title",     type: "string"  },
-      { indexed: false, internalType: "string",  name: "category",  type: "string"  },
-      { indexed: false, internalType: "uint256", name: "endTime",   type: "uint256" },
-    ],
-    name: "ProposalCreated", type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [{ indexed: true, internalType: "uint256", name: "proposalId", type: "uint256" }],
-    name: "ProposalResolved", type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true,  internalType: "uint256", name: "proposalId",   type: "uint256" },
-      { indexed: false, internalType: "uint32",  name: "forVotes",     type: "uint32"  },
-      { indexed: false, internalType: "uint32",  name: "againstVotes", type: "uint32"  },
-      { indexed: false, internalType: "uint32",  name: "abstainVotes", type: "uint32"  },
-    ],
-    name: "ResultsPublished", type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true,  internalType: "uint256", name: "proposalId", type: "uint256" },
-      { indexed: false, internalType: "uint32",  name: "margin",     type: "uint32"  },
-      { indexed: false, internalType: "uint32",  name: "totalVotes", type: "uint32"  },
-    ],
-    name: "AnalyticsPublished", type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true,  internalType: "uint256", name: "proposalId", type: "uint256" },
-      { indexed: true,  internalType: "address", name: "voter",      type: "address" },
-    ],
-    name: "VoteCast", type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true,  internalType: "uint256", name: "proposalId", type: "uint256" },
-      { indexed: true,  internalType: "address", name: "voter",      type: "address" },
-      { indexed: false, internalType: "uint8",   name: "weight",     type: "uint8"   },
-    ],
-    name: "WeightedVoteCast", type: "event",
-  },
-
-  // ── View / pure functions ────────────────────────────────────────────────
-  { inputs: [], name: "BASE_COST",         outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [], name: "maxVotingDuration", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [], name: "minVotingDuration", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [], name: "owner",             outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
-  { inputs: [], name: "proposalCount",     outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  {
-    inputs: [{ internalType: "uint256", name: "", type: "uint256" }, { internalType: "address", name: "", type: "address" }],
-    name: "hasVoted", outputs: [{ internalType: "bool", name: "", type: "bool" }], stateMutability: "view", type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "", type: "uint256" }, { internalType: "address", name: "", type: "address" }],
-    name: "voteWeight", outputs: [{ internalType: "uint8", name: "", type: "uint8" }], stateMutability: "view", type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    name: "voterCount", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "id", type: "uint256" }],
-    name: "getProposal",
-    outputs: [{ components: PROPOSAL_VIEW_COMPONENTS, internalType: "struct GhostGov.ProposalView", name: "v", type: "tuple" }],
-    stateMutability: "view", type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "offset", type: "uint256" }, { internalType: "uint256", name: "limit", type: "uint256" }],
-    name: "getProposals",
-    outputs: [{ components: PROPOSAL_VIEW_COMPONENTS, internalType: "struct GhostGov.ProposalView[]", name: "result", type: "tuple[]" }],
-    stateMutability: "view", type: "function",
-  },
-
-  // ── Write functions ──────────────────────────────────────────────────────
-  {
-    inputs: [
-      { internalType: "string",  name: "title",           type: "string"  },
-      { internalType: "string",  name: "description",     type: "string"  },
-      { internalType: "string",  name: "category",        type: "string"  },
-      { internalType: "uint256", name: "durationSeconds", type: "uint256" },
-    ],
-    name: "createProposal",
-    outputs: [{ internalType: "uint256", name: "id", type: "uint256" }],
-    stateMutability: "nonpayable", type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256",            name: "proposalId", type: "uint256" },
-      { components: IN_EUINT32_COMPONENTS, internalType: "struct InEuint32", name: "encFor",     type: "tuple" },
-      { components: IN_EUINT32_COMPONENTS, internalType: "struct InEuint32", name: "encAgainst", type: "tuple" },
-      { components: IN_EUINT32_COMPONENTS, internalType: "struct InEuint32", name: "encAbstain", type: "tuple" },
-    ],
-    name: "castVote",
-    outputs: [], stateMutability: "nonpayable", type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256",            name: "proposalId", type: "uint256" },
-      { components: IN_EUINT32_COMPONENTS, internalType: "struct InEuint32", name: "encFor",     type: "tuple" },
-      { components: IN_EUINT32_COMPONENTS, internalType: "struct InEuint32", name: "encAgainst", type: "tuple" },
-      { components: IN_EUINT32_COMPONENTS, internalType: "struct InEuint32", name: "encAbstain", type: "tuple" },
-      { internalType: "uint8",              name: "weight",     type: "uint8"   },
-    ],
-    name: "castWeightedVote",
-    outputs: [], stateMutability: "payable", type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "proposalId", type: "uint256" }],
-    name: "resolveProposal",
-    outputs: [], stateMutability: "nonpayable", type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "proposalId",   type: "uint256" },
-      { internalType: "uint32",  name: "forPlain",     type: "uint32"  },
-      { internalType: "bytes",   name: "forSig",       type: "bytes"   },
-      { internalType: "uint32",  name: "againstPlain", type: "uint32"  },
-      { internalType: "bytes",   name: "againstSig",   type: "bytes"   },
-      { internalType: "uint32",  name: "abstainPlain", type: "uint32"  },
-      { internalType: "bytes",   name: "abstainSig",   type: "bytes"   },
-    ],
-    name: "publishResults",
-    outputs: [], stateMutability: "nonpayable", type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint256", name: "proposalId", type: "uint256" },
-      { internalType: "uint32",  name: "marginPlain", type: "uint32" },
-      { internalType: "bytes",   name: "marginSig",   type: "bytes"  },
-      { internalType: "uint32",  name: "totalPlain",  type: "uint32" },
-      { internalType: "bytes",   name: "totalSig",    type: "bytes"  },
-    ],
-    name: "publishAnalytics",
-    outputs: [], stateMutability: "nonpayable", type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "min_", type: "uint256" }, { internalType: "uint256", name: "max_", type: "uint256" }],
-    name: "setVotingDurationBounds",
-    outputs: [], stateMutability: "nonpayable", type: "function",
-  },
-  {
-    inputs: [{ internalType: "address", name: "newOwner", type: "address" }],
-    name: "transferOwnership",
-    outputs: [], stateMutability: "nonpayable", type: "function",
-  },
-  { inputs: [], name: "renounceOwnership", outputs: [], stateMutability: "nonpayable", type: "function" },
-  { inputs: [], name: "withdraw",          outputs: [], stateMutability: "nonpayable", type: "function" },
-] as const;
+export const VEILDAO_ABI =  [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "got",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "expected",
+          "type": "uint8"
+        }
+      ],
+      "name": "InvalidEncryptedInput",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "int32",
+          "name": "value",
+          "type": "int32"
+        }
+      ],
+      "name": "SecurityZoneOutOfBounds",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "margin",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "totalVotes",
+          "type": "uint32"
+        }
+      ],
+      "name": "AnalyticsPublished",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "proposer",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "category",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "endTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "ProposalCreated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "ProposalResolved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "forVotes",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "againstVotes",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "abstainVotes",
+          "type": "uint32"
+        }
+      ],
+      "name": "ResultsPublished",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "voter",
+          "type": "address"
+        }
+      ],
+      "name": "VoteCast",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "voter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "weight",
+          "type": "uint8"
+        }
+      ],
+      "name": "WeightedVoteCast",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "BASE_COST",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encFor",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encAgainst",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encAbstain",
+          "type": "tuple"
+        }
+      ],
+      "name": "castVote",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encFor",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encAgainst",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint32",
+          "name": "encAbstain",
+          "type": "tuple"
+        },
+        {
+          "internalType": "uint8",
+          "name": "weight",
+          "type": "uint8"
+        }
+      ],
+      "name": "castWeightedVote",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "category",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "durationSeconds",
+          "type": "uint256"
+        }
+      ],
+      "name": "createProposal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getProposal",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "description",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "category",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "proposer",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "startTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "endTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "voterCount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resolved",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsPublished",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "analyticsPublished",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint256",
+              "name": "forVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "againstVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "abstainVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "margin",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "totalVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsReady",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "analyticsReady",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct GhostGov.ProposalView",
+          "name": "v",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "offset",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "limit",
+          "type": "uint256"
+        }
+      ],
+      "name": "getProposals",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "description",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "category",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "proposer",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "startTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "endTime",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "voterCount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resolved",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsPublished",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "analyticsPublished",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint256",
+              "name": "forVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "againstVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "abstainVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "margin",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "totalVotes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "resultsReady",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "analyticsReady",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct GhostGov.ProposalView[]",
+          "name": "result",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "hasVoted",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "maxVotingDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "minVotingDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "proposalCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint32",
+          "name": "marginPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "marginSig",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint32",
+          "name": "totalPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "totalSig",
+          "type": "bytes"
+        }
+      ],
+      "name": "publishAnalytics",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint32",
+          "name": "forPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "forSig",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint32",
+          "name": "againstPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "againstSig",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint32",
+          "name": "abstainPlain",
+          "type": "uint32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "abstainSig",
+          "type": "bytes"
+        }
+      ],
+      "name": "publishResults",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "resolveProposal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "min_",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "max_",
+          "type": "uint256"
+        }
+      ],
+      "name": "setVotingDurationBounds",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "voteWeight",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "voterCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ] as const;
 
 // ─── Addresses ────────────────────────────────────────────────────────────────
 
 // Update 421614 to the GhostGov address after running: npx hardhat deploy-ghostgov --network arb-sepolia
 export const CONTRACT_ADDRESSES: Record<number, `0x${string}`> = {
   11155111: "0x0000000000000000000000000000000000000000", // eth-sepolia (not deployed)
-  421614:   "0xdE21971e44DB426b87B17C40eaC54E212bdCa7EB", // arb-sepolia — update after GhostGov deploy
+  421614:   "0x5a9E27c1B1C526Cd4493385D960c1BDaa06239ea", // arb-sepolia — update after GhostGov deploy
 };
 
 export function getVeilDAOAddress(chainId: number): `0x${string}` | undefined {
