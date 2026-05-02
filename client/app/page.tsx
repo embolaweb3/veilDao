@@ -88,15 +88,15 @@ export default function HomePage() {
 
           {/* Headline */}
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[0.95]">
-            Vote{" "}
-            <span className="text-gradient">Without</span>
+            Vote.{" "}
+            <span className="text-gradient">Vanish.</span>
             <br />
-            Fear.
+            Count.
           </h1>
 
           {/* Subheadline */}
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-4 leading-relaxed">
-            VeilDAO encrypts every ballot <strong className="text-white">in your browser</strong> using FHE.
+            GhostGov encrypts every ballot <strong className="text-white">in your browser</strong> using FHE.
             The contract tallies votes <strong className="text-white">without ever seeing them</strong>.
             Bribery becomes mathematically pointless.
           </p>

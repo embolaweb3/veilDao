@@ -32,7 +32,7 @@ export function NavBar() {
             <Shield className="w-4 h-4 text-white" />
           </motion.div>
           <span className="font-bold text-lg tracking-tight">
-            Veil<span className="text-gradient">DAO</span>
+            Ghost<span className="text-gradient">Gov</span>
           </span>
         </Link>
 
