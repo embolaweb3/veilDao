@@ -1,8 +1,8 @@
-# VeilDAO — Coercion-Resistant Governance
+# GhostGov — Vote. Vanish. Count.
 
-> *Vote in the dark. Count in the light.*
+> *Your ballot is mathematically invisible — even the contract never sees it.*
 
-VeilDAO is a DAO governance protocol where **individual votes are permanently encrypted** using Fhenix Fully Homomorphic Encryption (FHE). The smart contract tallies ballots without ever decrypting them. Only aggregate totals are revealed after voting ends — making bribery and coercion **mathematically impossible**.
+GhostGov is a DAO governance protocol where **individual votes are permanently encrypted** using Fhenix Fully Homomorphic Encryption (FHE). The smart contract tallies ballots without ever decrypting them. Only aggregate totals are revealed after voting ends — making bribery and coercion **mathematically impossible**.
 
 ---
 

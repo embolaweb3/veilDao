@@ -3,12 +3,12 @@ import "./globals.css";
 import { ClientProviders } from "@/components/ClientProviders";
 
 export const metadata: Metadata = {
-  title:       "VeilDAO — Coercion-Resistant Governance",
-  description: "Vote without fear. FHE-encrypted ballots aggregated on Fhenix — individual votes are mathematically impossible to trace.",
-  keywords:    ["DAO", "governance", "FHE", "Fhenix", "privacy", "voting", "blockchain"],
+  title:       "GhostGov — Vote. Vanish. Count.",
+  description: "FHE-encrypted on-chain governance. Your ballot is mathematically invisible — even the contract never sees it.",
+  keywords:    ["DAO", "governance", "FHE", "Fhenix", "privacy", "voting", "blockchain", "GhostGov"],
   openGraph: {
-    title:       "VeilDAO",
-    description: "Coercion-resistant DAO governance powered by Fully Homomorphic Encryption",
+    title:       "GhostGov",
+    description: "Vote. Vanish. Count. — Coercion-resistant governance powered by Fully Homomorphic Encryption",
     type:        "website",
   },
 };
