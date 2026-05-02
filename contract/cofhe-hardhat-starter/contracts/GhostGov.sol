@@ -4,13 +4,42 @@ pragma solidity ^0.8.25;
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+
+interface IGhostAnalytics {
+    struct AnalyticsView {
+        uint32 margin;
+        uint32 totalVotes;
+        bool   quorumMet;
+        bool   computed;
+        bool   published;
+    }
+    function getAnalytics(uint256 proposalId) external view returns (AnalyticsView memory);
+    function isQuorumMet(uint256 proposalId) external view returns (bool);
+}
+
+interface IGhostTreasury {
+    function deposit(uint256 proposalId) external payable;
+}
+
+/**
+ * @title GhostGov
+ * @notice Coercion-resistant DAO governance with FHE voting.
+ *
+ * Multi-contract FHE access control:
+ *   resolveProposal() calls FHE.allow(handle, analyticsEngine), granting
+ *   GhostAnalytics cryptographic permission to run FHE operations on encrypted
+ *   tallies it never accumulated itself — a novel FHE access control primitive.
+ *
+ * Quadratic fees are forwarded to GhostTreasury. Results are gated behind
+ * GhostAnalytics quorum confirmation.
+ */
 contract GhostGov is Ownable {
 
-    // ─── Cost schedule for quadratic voting ──────────────────────────────────
+    uint256 public constant BASE_COST = 0.0001 ether;
 
-    uint256 public constant BASE_COST = 0.0001 ether; // weight-1 baseline (testnet)
-
-    // ─── Structs ─────────────────────────────────────────────────────────────
+    IGhostAnalytics public analyticsEngine;
+    IGhostTreasury  public treasury;
 
     struct Proposal {
         uint256 id;
@@ -20,16 +49,11 @@ contract GhostGov is Ownable {
         address proposer;
         uint256 startTime;
         uint256 endTime;
-        // Encrypted vote tallies (homomorphically accumulated)
         euint32 forVotes;
         euint32 againstVotes;
         euint32 abstainVotes;
-        // FHE analytics — computed at resolution on encrypted data
-        euint32 encMargin;       // FHE.sub(forVotes, againstVotes)
-        euint32 encTotalVotes;   // FHE.add(for + against + abstain)
         bool    resolved;
         bool    resultsPublished;
-        bool    analyticsPublished;
     }
 
     struct ProposalView {
@@ -44,54 +68,51 @@ contract GhostGov is Ownable {
         bool    resolved;
         bool    resultsPublished;
         bool    analyticsPublished;
-        // Decrypted results (only populated after publishResults / publishAnalytics)
         uint256 forVotes;
         uint256 againstVotes;
         uint256 abstainVotes;
-        uint256 margin;          // |forVotes - againstVotes|
-        uint256 totalVotes;      // for + against + abstain
+        uint256 margin;
+        uint256 totalVotes;
         bool    resultsReady;
         bool    analyticsReady;
     }
 
-    // ─── State ────────────────────────────────────────────────────────────────
-
     uint256 public proposalCount;
-    mapping(uint256 => Proposal)                      private proposals;
-    mapping(uint256 => mapping(address => bool))      public  hasVoted;
-    mapping(uint256 => mapping(address => uint8))     public  voteWeight;
-    mapping(uint256 => uint256)                       public  voterCount;
+    mapping(uint256 => Proposal)                  private proposals;
+    mapping(uint256 => mapping(address => bool))  public  hasVoted;
+    mapping(uint256 => mapping(address => uint8)) public  voteWeight;
+    mapping(uint256 => uint256)                   public  voterCount;
 
     uint256 public minVotingDuration = 60;
     uint256 public maxVotingDuration = 30 days;
 
-    // ─── Events ───────────────────────────────────────────────────────────────
-
-    event ProposalCreated(
-        uint256 indexed id,
-        address indexed proposer,
-        string  title,
-        string  category,
-        uint256 endTime
-    );
+    event ProposalCreated(uint256 indexed id, address indexed proposer, string title, string category, uint256 endTime);
     event VoteCast(uint256 indexed proposalId, address indexed voter);
     event WeightedVoteCast(uint256 indexed proposalId, address indexed voter, uint8 weight);
     event ProposalResolved(uint256 indexed proposalId);
-    event ResultsPublished(
-        uint256 indexed proposalId,
-        uint32  forVotes,
-        uint32  againstVotes,
-        uint32  abstainVotes
-    );
-    event AnalyticsPublished(
-        uint256 indexed proposalId,
-        uint32  margin,
-        uint32  totalVotes
-    );
-
-    // ─── Constructor ──────────────────────────────────────────────────────────
+    event ResultsPublished(uint256 indexed proposalId, uint32 forVotes, uint32 againstVotes, uint32 abstainVotes);
+    event AnalyticsEngineSet(address indexed engine);
+    event TreasurySet(address indexed treasury_);
 
     constructor() Ownable(msg.sender) {}
+
+    // ─── Admin ────────────────────────────────────────────────────────────────
+
+    function setAnalyticsEngine(address engine) external onlyOwner {
+        analyticsEngine = IGhostAnalytics(engine);
+        emit AnalyticsEngineSet(engine);
+    }
+
+    function setTreasury(address treasury_) external onlyOwner {
+        treasury = IGhostTreasury(treasury_);
+        emit TreasurySet(treasury_);
+    }
+
+    function setVotingDurationBounds(uint256 min_, uint256 max_) external onlyOwner {
+        require(min_ > 0 && max_ >= min_, "Invalid bounds");
+        minVotingDuration = min_;
+        maxVotingDuration = max_;
+    }
 
     // ─── Proposal lifecycle ───────────────────────────────────────────────────
 
@@ -128,10 +149,8 @@ contract GhostGov is Ownable {
         emit ProposalCreated(id, msg.sender, title, category, p.endTime);
     }
 
-    /**
-     * @notice Cast an encrypted vote with weight 1 (free).
-     * Encrypt (1,0,0) for FOR | (0,1,0) for AGAINST | (0,0,1) for ABSTAIN.
-     */
+    // ─── Voting ───────────────────────────────────────────────────────────────
+
     function castVote(
         uint256          proposalId,
         InEuint32 memory encFor,
@@ -143,19 +162,6 @@ contract GhostGov is Ownable {
         emit VoteCast(proposalId, msg.sender);
     }
 
-
-    /**
-     * @notice Cast an encrypted vote with quadratic weight.
-     *
-     * Weight schedule:
-     *   weight 1 → cost 0.0001 ETH  (1 × BASE_COST)
-     *   weight 2 → cost 0.0004 ETH  (4 × BASE_COST)
-     *   weight 4 → cost 0.0016 ETH  (16 × BASE_COST)
-     *
-     * The voter encrypts (weight,0,0)/(0,weight,0)/(0,0,weight).
-     * The weight is revealed by the payment but the DIRECTION remains hidden.
-     * This preserves coercion-resistance while enabling proportional influence.
-     */
     function castWeightedVote(
         uint256          proposalId,
         InEuint32 memory encFor,
@@ -169,6 +175,11 @@ contract GhostGov is Ownable {
 
         _applyVote(proposalId, encFor, encAgainst, encAbstain);
         voteWeight[proposalId][msg.sender] = weight;
+
+        if (address(treasury) != address(0)) {
+            treasury.deposit{value: msg.value}(proposalId);
+        }
+
         emit WeightedVoteCast(proposalId, msg.sender, weight);
     }
 
@@ -195,15 +206,14 @@ contract GhostGov is Ownable {
         voterCount[proposalId]++;
     }
 
+    // ─── Resolution ───────────────────────────────────────────────────────────
 
     /**
-     * @notice Close voting and compute FHE analytics on encrypted tallies.
+     * @notice Close voting and grant GhostAnalytics cryptographic access to tallies.
      *
-     * Two analytics are computed entirely on ciphertext — no decryption here:
-     *   encMargin     = FHE.sub(forVotes, againstVotes)   — encrypted winning margin
-     *   encTotalVotes = FHE.add(for + against + abstain)  — encrypted turnout
-     *
-     * Both are opened for public decryption so the oracle can later publish them.
+     * The FHE.allow() calls are the key primitive: a separately deployed analytics
+     * contract receives permission to run FHE.sub/add on encrypted handles it
+     * never created — cross-contract FHE access control.
      */
     function resolveProposal(uint256 proposalId) external {
         Proposal storage p = proposals[proposalId];
@@ -212,27 +222,19 @@ contract GhostGov is Ownable {
 
         p.resolved = true;
 
-        // ── FHE analytics ────────────────────────────────────────────────────
-        // These operations execute on encrypted data — the EVM sees no plaintext.
-        p.encMargin     = FHE.sub(p.forVotes, p.againstVotes);
-        p.encTotalVotes = FHE.add(FHE.add(p.forVotes, p.againstVotes), p.abstainVotes);
-
-        FHE.allowThis(p.encMargin);
-        FHE.allowThis(p.encTotalVotes);
-
-        // Open all handles for oracle decryption
         FHE.allowPublic(p.forVotes);
         FHE.allowPublic(p.againstVotes);
         FHE.allowPublic(p.abstainVotes);
-        FHE.allowPublic(p.encMargin);
-        FHE.allowPublic(p.encTotalVotes);
+
+        if (address(analyticsEngine) != address(0)) {
+            FHE.allow(p.forVotes,     address(analyticsEngine));
+            FHE.allow(p.againstVotes, address(analyticsEngine));
+            FHE.allow(p.abstainVotes, address(analyticsEngine));
+        }
 
         emit ProposalResolved(proposalId);
     }
 
-    /**
-     * @notice Publish verifiable decrypted vote totals (FHE-signed).
-     */
     function publishResults(
         uint256      proposalId,
         uint32       forPlain,
@@ -246,6 +248,10 @@ contract GhostGov is Ownable {
         require(p.resolved,          "Not resolved yet");
         require(!p.resultsPublished, "Already published");
 
+        if (address(analyticsEngine) != address(0)) {
+            require(analyticsEngine.isQuorumMet(proposalId), "Quorum not met");
+        }
+
         FHE.publishDecryptResult(p.forVotes,     forPlain,     forSig);
         FHE.publishDecryptResult(p.againstVotes, againstPlain, againstSig);
         FHE.publishDecryptResult(p.abstainVotes, abstainPlain, abstainSig);
@@ -254,36 +260,30 @@ contract GhostGov is Ownable {
         emit ResultsPublished(proposalId, forPlain, againstPlain, abstainPlain);
     }
 
-    /**
-     * @notice Publish the FHE-computed analytics (margin and turnout).
-     * Margin wraps on underflow — a value > 2^31 means AGAINST leads.
-     */
-    function publishAnalytics(
-        uint256      proposalId,
-        uint32       marginPlain,
-        bytes memory marginSig,
-        uint32       totalPlain,
-        bytes memory totalSig
-    ) external {
+    // ─── FHE handle passthrough ───────────────────────────────────────────────
+
+    function getVoteHandles(uint256 proposalId) external view returns (
+        euint32 forVotes,
+        euint32 againstVotes,
+        euint32 abstainVotes,
+        bool    resolved
+    ) {
         Proposal storage p = proposals[proposalId];
-        require(p.resolved,             "Not resolved yet");
-        require(!p.analyticsPublished,  "Already published");
-
-        FHE.publishDecryptResult(p.encMargin,     marginPlain, marginSig);
-        FHE.publishDecryptResult(p.encTotalVotes, totalPlain,  totalSig);
-
-        p.analyticsPublished = true;
-        emit AnalyticsPublished(proposalId, marginPlain, totalPlain);
+        return (p.forVotes, p.againstVotes, p.abstainVotes, p.resolved);
     }
 
+    // ─── Views ────────────────────────────────────────────────────────────────
 
     function getProposal(uint256 id) external view returns (ProposalView memory v) {
         Proposal storage p = proposals[id];
         (uint256 fv,  bool fReady)  = FHE.getDecryptResultSafe(p.forVotes);
         (uint256 av,  bool aReady)  = FHE.getDecryptResultSafe(p.againstVotes);
         (uint256 abv, bool abReady) = FHE.getDecryptResultSafe(p.abstainVotes);
-        (uint256 mg,  bool mgReady) = FHE.getDecryptResultSafe(p.encMargin);
-        (uint256 tv,  bool tvReady) = FHE.getDecryptResultSafe(p.encTotalVotes);
+
+        IGhostAnalytics.AnalyticsView memory analytics;
+        if (address(analyticsEngine) != address(0)) {
+            analytics = analyticsEngine.getAnalytics(id);
+        }
 
         v = ProposalView({
             id:                 p.id,
@@ -296,14 +296,14 @@ contract GhostGov is Ownable {
             voterCount:         voterCount[id],
             resolved:           p.resolved,
             resultsPublished:   p.resultsPublished,
-            analyticsPublished: p.analyticsPublished,
+            analyticsPublished: analytics.published,
             forVotes:           fv,
             againstVotes:       av,
             abstainVotes:       abv,
-            margin:             mg,
-            totalVotes:         tv,
+            margin:             analytics.margin,
+            totalVotes:         analytics.totalVotes,
             resultsReady:       fReady && aReady && abReady,
-            analyticsReady:     mgReady && tvReady
+            analyticsReady:     analytics.published
         });
     }
 
@@ -315,48 +315,8 @@ contract GhostGov is Ownable {
         if (offset >= total) return result;
         uint256 end = offset + limit > total ? total : offset + limit;
         result = new ProposalView[](end - offset);
-
         for (uint256 i = 0; i < result.length; i++) {
-            uint256 pid = offset + i;
-            Proposal storage p = proposals[pid];
-            (uint256 fv,  bool fReady)  = FHE.getDecryptResultSafe(p.forVotes);
-            (uint256 av,  bool aReady)  = FHE.getDecryptResultSafe(p.againstVotes);
-            (uint256 abv, bool abReady) = FHE.getDecryptResultSafe(p.abstainVotes);
-            (uint256 mg,  bool mgReady) = FHE.getDecryptResultSafe(p.encMargin);
-            (uint256 tv,  bool tvReady) = FHE.getDecryptResultSafe(p.encTotalVotes);
-
-            result[i] = ProposalView({
-                id:                 p.id,
-                title:              p.title,
-                description:        p.description,
-                category:           p.category,
-                proposer:           p.proposer,
-                startTime:          p.startTime,
-                endTime:            p.endTime,
-                voterCount:         voterCount[pid],
-                resolved:           p.resolved,
-                resultsPublished:   p.resultsPublished,
-                analyticsPublished: p.analyticsPublished,
-                forVotes:           fv,
-                againstVotes:       av,
-                abstainVotes:       abv,
-                margin:             mg,
-                totalVotes:         tv,
-                resultsReady:       fReady && aReady && abReady,
-                analyticsReady:     mgReady && tvReady
-            });
+            result[i] = this.getProposal(offset + i);
         }
-    }
-
-
-    function setVotingDurationBounds(uint256 min_, uint256 max_) external onlyOwner {
-        require(min_ > 0 && max_ >= min_, "Invalid bounds");
-        minVotingDuration = min_;
-        maxVotingDuration = max_;
-    }
-
-    function withdraw() external onlyOwner {
-        (bool ok,) = msg.sender.call{value: address(this).balance}("");
-        require(ok, "Transfer failed");
     }
 }
