@@ -1,12 +1,17 @@
 "use client";
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
-import { VEILDAO_ABI, getVeilDAOAddress, type Proposal, DEMO_PROPOSALS } from "@/lib/contracts";
+import { VEILDAO_ABI, GHOSTANALYTICS_ABI, getVeilDAOAddress, getAnalyticsAddress, type Proposal, DEMO_PROPOSALS } from "@/lib/contracts";
 import { useState, useEffect } from "react";
 
 function useContractAddress() {
   const chainId = useChainId();
   return getVeilDAOAddress(chainId ?? 0);
+}
+
+function useAnalyticsAddress() {
+  const chainId = useChainId();
+  return getAnalyticsAddress(chainId ?? 0);
 }
 
 export function useProposals() {
@@ -29,7 +34,6 @@ export function useProposals() {
   });
 
   useEffect(() => {
-    // Fall back to demo data if no contract is deployed on this chain
     if (!address) setUseDemoData(true);
   }, [address]);
 
@@ -125,4 +129,26 @@ export function useResolveProposal(proposalId: bigint) {
   };
 
   return { resolve, isPending, isConfirming, isSuccess };
+}
+
+export function useComputeAnalytics(proposalId: bigint) {
+  const address = useAnalyticsAddress();
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isPending: waitPending, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+    query: { enabled: !!hash },
+  });
+  const isConfirming = !!hash && waitPending;
+
+  const compute = () => {
+    if (!address) return;
+    writeContract({
+      address,
+      abi:          GHOSTANALYTICS_ABI,
+      functionName: "computeAnalytics",
+      args:         [proposalId],
+    });
+  };
+
+  return { compute, isPending, isConfirming, isSuccess };
 }

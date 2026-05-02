@@ -4,14 +4,16 @@ import { use, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock, Users, Tag, Shield, ExternalLink, RefreshCw, Lock } from "lucide-react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { NavBar } from "@/components/NavBar";
 import { VotePanel } from "@/components/VotePanel";
 import { EncryptedCounter } from "@/components/EncryptedCounter";
-import { useProposal, useHasVoted, useResolveProposal } from "@/hooks/useVeilDAO";
+import { useProposal, useHasVoted, useResolveProposal, useComputeAnalytics } from "@/hooks/useVeilDAO";
 import { useFHEVote } from "@/hooks/useFHEVote";
 import { CoercionProofPanel } from "@/components/CoercionProofPanel";
 import { FHEAnalyticsPanel } from "@/components/FHEAnalyticsPanel";
+import { LiveVoteFeed } from "@/components/LiveVoteFeed";
+import { getAnalyticsAddress } from "@/lib/contracts";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -48,15 +50,23 @@ export default function VotePage({ params }: Props) {
   const { id }       = use(params);
   const proposalId   = BigInt(id);
   const { isConnected } = useAccount();
+  const chainId      = useChainId();
 
   const { proposal, isLoading, isDemoMode, refetch } = useProposal(proposalId);
   const hasVoted   = useHasVoted(proposalId);
   const { castVote, stage, errMsg, lastChoice } = useFHEVote(proposalId);
   const { resolve, isPending: isResolving, isSuccess: resolveSuccess } = useResolveProposal(proposalId);
+  const { compute, isPending: isComputing, isSuccess: computeSuccess } = useComputeAnalytics(proposalId);
+
+  const analyticsAddress = getAnalyticsAddress(chainId ?? 0);
 
   useEffect(() => {
     if (resolveSuccess) refetch?.();
   }, [resolveSuccess, refetch]);
+
+  useEffect(() => {
+    if (computeSuccess) refetch?.();
+  }, [computeSuccess, refetch]);
 
   const now        = BigInt(Math.floor(Date.now() / 1000));
   const isActive   = !!proposal && proposal.endTime > now && !proposal.resolved;
@@ -257,7 +267,12 @@ export default function VotePage({ params }: Props) {
 
             {/* FHE analytics — visible after resolution */}
             {proposal.resolved && (
-              <FHEAnalyticsPanel proposal={proposal} />
+              <FHEAnalyticsPanel
+                proposal={proposal}
+                onCompute={isDemoMode ? undefined : compute}
+                isComputing={isComputing || computeSuccess}
+                analyticsAddress={analyticsAddress || undefined}
+              />
             )}
           </div>
 
@@ -292,6 +307,15 @@ export default function VotePage({ params }: Props) {
             {stage === "success" && lastChoice && (
               <CoercionProofPanel votedFor={lastChoice} />
             )}
+
+            {/* Live vote feed */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.25 }}
+            >
+              <LiveVoteFeed proposalId={proposalId} isDemoMode={isDemoMode} />
+            </motion.div>
 
             {/* FHE technical card */}
             <motion.div
