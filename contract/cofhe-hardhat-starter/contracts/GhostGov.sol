@@ -4,23 +4,6 @@ pragma solidity ^0.8.25;
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/**
- * @title GhostGov
- * @notice Coercion-resistant DAO governance with FHE analytics and quadratic voting.
- *
- * Core guarantees:
- *   • Votes encrypted client-side — the contract NEVER sees plaintext ballots
- *   • Homomorphic tallying via FHE.add — totals stay encrypted until resolution
- *   • FHE analytics (margin, turnout) computed on encrypted data at resolution
- *   • Quadratic voting — heavier votes cost exponentially more, preserving fairness
- *
- * Vote flow:
- *   1. Voter encrypts (weight,0,0)/(0,weight,0)/(0,0,weight) for FOR/AGAINST/ABSTAIN
- *   2. castVote() or castWeightedVote() adds to encrypted running totals
- *   3. resolveProposal() — computes FHE analytics (margin, turnout) on ciphertext
- *   4. publishResults() — oracle publishes verifiable plaintext totals
- *   5. publishAnalytics() — oracle publishes verifiable margin and turnout
- */
 contract GhostGov is Ownable {
 
     // ─── Cost schedule for quadratic voting ──────────────────────────────────
@@ -145,8 +128,6 @@ contract GhostGov is Ownable {
         emit ProposalCreated(id, msg.sender, title, category, p.endTime);
     }
 
-    // ─── Standard voting (weight = 1, free) ──────────────────────────────────
-
     /**
      * @notice Cast an encrypted vote with weight 1 (free).
      * Encrypt (1,0,0) for FOR | (0,1,0) for AGAINST | (0,0,1) for ABSTAIN.
@@ -162,7 +143,6 @@ contract GhostGov is Ownable {
         emit VoteCast(proposalId, msg.sender);
     }
 
-    // ─── Quadratic voting (weight ∈ {1,2,4}, cost = weight² × BASE_COST) ────
 
     /**
      * @notice Cast an encrypted vote with quadratic weight.
@@ -215,7 +195,6 @@ contract GhostGov is Ownable {
         voterCount[proposalId]++;
     }
 
-    // ─── Resolution + FHE analytics ───────────────────────────────────────────
 
     /**
      * @notice Close voting and compute FHE analytics on encrypted tallies.
@@ -297,7 +276,6 @@ contract GhostGov is Ownable {
         emit AnalyticsPublished(proposalId, marginPlain, totalPlain);
     }
 
-    // ─── Views ────────────────────────────────────────────────────────────────
 
     function getProposal(uint256 id) external view returns (ProposalView memory v) {
         Proposal storage p = proposals[id];
@@ -370,7 +348,6 @@ contract GhostGov is Ownable {
         }
     }
 
-    // ─── Admin ────────────────────────────────────────────────────────────────
 
     function setVotingDurationBounds(uint256 min_, uint256 max_) external onlyOwner {
         require(min_ > 0 && max_ >= min_, "Invalid bounds");
