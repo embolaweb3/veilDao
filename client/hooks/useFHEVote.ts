@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useWriteContract, useWaitForTransactionReceipt, useChainId, useWalletClient, usePublicClient } from "wagmi";
+import { createCofheConfig, createCofheClient } from "@cofhe/sdk/web";
+import { arbSepolia } from "@cofhe/sdk/chains";
 import { Encryptable } from "@cofhe/sdk";
-import { VEILDAO_ABI, getVeilDAOAddress, type VoteChoice } from "@/lib/contracts";
+import { VEILDAO_ABI, getVeilDAOAddress, type VoteChoice, type VoteWeight, WEIGHT_COSTS } from "@/lib/contracts";
 
 type VoteStage =
   | "idle"
@@ -13,11 +15,32 @@ type VoteStage =
   | "success"
   | "error";
 
+// Single shared config — created once, reused across hook instances.
+const cofheConfig = createCofheConfig({ supportedChains: [arbSepolia] });
+
 export function useFHEVote(proposalId: bigint) {
-  const chainId  = useChainId();
-  const address  = getVeilDAOAddress(chainId ?? 0);
-  const [stage,  setStage]  = useState<VoteStage>("idle");
-  const [errMsg, setErrMsg] = useState<string>("");
+  const chainId      = useChainId();
+  const address      = getVeilDAOAddress(chainId ?? 0);
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
+
+  const [stage,      setStage]      = useState<VoteStage>("idle");
+  const [errMsg,     setErrMsg]     = useState<string>("");
+  const [lastChoice, setLastChoice] = useState<VoteChoice | null>(null);
+
+  // Keep the initialised client in a ref so it survives re-renders.
+  const clientRef = useRef<ReturnType<typeof createCofheClient> | null>(null);
+
+  useEffect(() => {
+    if (!walletClient || !publicClient) return;
+
+    const client = createCofheClient(cofheConfig);
+    client.connect(publicClient, walletClient).then(() => {
+      clientRef.current = client;
+    }).catch(() => {
+      // Connection will be retried on the next wallet/chain change.
+    });
+  }, [walletClient, publicClient]);
 
   const { writeContractAsync, data: hash } = useWriteContract();
   const { isPending: waitPending, isSuccess } = useWaitForTransactionReceipt({
@@ -27,24 +50,33 @@ export function useFHEVote(proposalId: bigint) {
   const isConfirming = !!hash && waitPending;
 
   const castVote = useCallback(
-    async (choice: VoteChoice, cofheClient: any) => {
-      if (!address || !cofheClient) {
-        setErrMsg("Wallet not connected or wrong network");
+    async (choice: VoteChoice, weight: VoteWeight = 1) => {
+      if (!address) {
+        setErrMsg("Wrong network — switch to Arbitrum Sepolia");
+        setStage("error");
+        return;
+      }
+      const client = clientRef.current;
+      if (!client) {
+        setErrMsg("FHE client not ready — please wait a moment and try again");
         setStage("error");
         return;
       }
 
       try {
+        // ── 1. Encrypt ──────────────────────────────────────────────────────
+        setLastChoice(choice);
         setStage("encrypting");
 
-        // Each vote is a triple: exactly one field is 1, the rest are 0.
-        // The FHE ciphertexts are randomised — an observer can NOT determine
-        // which was 1, making coercion cryptographically impossible.
-        const forVal     = choice === "for"     ? 1n : 0n;
-        const againstVal = choice === "against" ? 1n : 0n;
-        const abstainVal = choice === "abstain" ? 1n : 0n;
+        // Each vote is a triple: exactly one field carries the weight, the rest are 0.
+        // The FHE ciphertexts are randomised — an observer CANNOT determine
+        // which was non-zero, making coercion cryptographically impossible.
+        const w = BigInt(weight);
+        const forVal     = choice === "for"     ? w : 0n;
+        const againstVal = choice === "against" ? w : 0n;
+        const abstainVal = choice === "abstain" ? w : 0n;
 
-        const encrypted = await cofheClient
+        const encrypted = await client
           .encryptInputs([
             Encryptable.uint32(forVal),
             Encryptable.uint32(againstVal),
@@ -52,15 +84,35 @@ export function useFHEVote(proposalId: bigint) {
           ])
           .execute();
 
+        // ── 2. Send transaction ──────────────────────────────────────────────
         setStage("sending");
 
-        await writeContractAsync({
-          address,
-          abi:          VEILDAO_ABI,
-          functionName: "castVote",
-          args:         [proposalId, encrypted[0], encrypted[1], encrypted[2]],
-        });
+        // The SDK types signature as `string`; ABI expects `0x${string}`.
+        const toArg = (e: (typeof encrypted)[number]) =>
+          ({ ...e, signature: e.signature as `0x${string}` }) as const;
 
+        const cost = WEIGHT_COSTS[weight];
+
+        if (weight === 1) {
+          // Free path — castVote (no ETH required)
+          await writeContractAsync({
+            address,
+            abi:          VEILDAO_ABI,
+            functionName: "castVote",
+            args:         [proposalId, toArg(encrypted[0]), toArg(encrypted[1]), toArg(encrypted[2])],
+          });
+        } else {
+          // Quadratic path — castWeightedVote with ETH payment
+          await writeContractAsync({
+            address,
+            abi:          VEILDAO_ABI,
+            functionName: "castWeightedVote",
+            args:         [proposalId, toArg(encrypted[0]), toArg(encrypted[1]), toArg(encrypted[2]), weight],
+            value:        cost,
+          });
+        }
+
+        // ── 3. Wait for confirmation ─────────────────────────────────────────
         setStage("confirming");
       } catch (err: any) {
         setErrMsg(err?.message ?? "Transaction failed");
@@ -70,13 +122,16 @@ export function useFHEVote(proposalId: bigint) {
     [address, proposalId, writeContractAsync]
   );
 
-  // Update stage when tx confirms
-  if (isSuccess && stage === "confirming") setStage("success");
+  // Advance to success once the on-chain confirmation lands.
+  useEffect(() => {
+    if (isSuccess && stage === "confirming") setStage("success");
+  }, [isSuccess, stage]);
 
   return {
     castVote,
     stage,
     errMsg,
+    lastChoice,
     isEncrypting:  stage === "encrypting",
     isSending:     stage === "sending",
     isConfirming:  stage === "confirming" || isConfirming,

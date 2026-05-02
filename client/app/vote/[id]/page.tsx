@@ -10,6 +10,8 @@ import { VotePanel } from "@/components/VotePanel";
 import { EncryptedCounter } from "@/components/EncryptedCounter";
 import { useProposal, useHasVoted, useResolveProposal } from "@/hooks/useVeilDAO";
 import { useFHEVote } from "@/hooks/useFHEVote";
+import { CoercionProofPanel } from "@/components/CoercionProofPanel";
+import { FHEAnalyticsPanel } from "@/components/FHEAnalyticsPanel";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -49,12 +51,8 @@ export default function VotePage({ params }: Props) {
 
   const { proposal, isLoading, isDemoMode, refetch } = useProposal(proposalId);
   const hasVoted   = useHasVoted(proposalId);
-  const { castVote, stage, errMsg } = useFHEVote(proposalId);
+  const { castVote, stage, errMsg, lastChoice } = useFHEVote(proposalId);
   const { resolve, isPending: isResolving, isSuccess: resolveSuccess } = useResolveProposal(proposalId);
-
-  // cofhe client — in a real app this comes from useCofhe() hook from @cofhe/react
-  // For demo we pass null and useFHEVote handles the mock encryption
-  const cofheClient = null;
 
   useEffect(() => {
     if (resolveSuccess) refetch?.();
@@ -256,6 +254,11 @@ export default function VotePage({ params }: Props) {
                 </motion.button>
               </motion.div>
             )}
+
+            {/* FHE analytics — visible after resolution */}
+            {proposal.resolved && (
+              <FHEAnalyticsPanel proposal={proposal} />
+            )}
           </div>
 
           {/* ── Right: vote panel ────────────────────────────────────────── */}
@@ -273,7 +276,6 @@ export default function VotePage({ params }: Props) {
                   onVote={castVote}
                   stage={stage}
                   errMsg={errMsg}
-                  cofheClient={cofheClient}
                 />
               </motion.div>
             ) : (
@@ -284,6 +286,11 @@ export default function VotePage({ params }: Props) {
                   Your vote will be encrypted locally before submission
                 </p>
               </div>
+            )}
+
+            {/* Coercion-resistance proof — shown after a successful vote */}
+            {stage === "success" && lastChoice && (
+              <CoercionProofPanel votedFor={lastChoice} />
             )}
 
             {/* FHE technical card */}
@@ -298,10 +305,11 @@ export default function VotePage({ params }: Props) {
                 <h3 className="text-xs font-semibold text-white uppercase tracking-wider">FHE Guarantee</h3>
               </div>
               <div className="space-y-2 text-xs text-slate-500 leading-relaxed font-mono">
-                <p><span className="text-violet-light">Client:</span> enc(1,0,0) | enc(0,1,0) | enc(0,0,1)</p>
+                <p><span className="text-violet-light">Client:</span> enc(w,0,0) | enc(0,w,0) | enc(0,0,w)</p>
                 <p><span className="text-violet-light">Contract:</span> FHE.add(total, vote)</p>
+                <p><span className="text-violet-light">Analytics:</span> FHE.sub(for, against)</p>
                 <p><span className="text-violet-light">Result:</span> FHE.publishDecryptResult</p>
-                <p><span className="text-violet-light">Privacy:</span> vote ≡ ciphertext ← unreadable</p>
+                <p><span className="text-violet-light">Privacy:</span> direction ≡ ciphertext ← unreadable</p>
               </div>
             </motion.div>
 
